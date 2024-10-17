@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard with Charts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.2/chart.min.js"></script>
+
+    <style>
+        header {
+            height: 64px;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                margin-top: 64px;
+            }
+        }
+
+        .profile-pic {
+            transition: transform 0.3s ease, filter 0.3s ease;
+            filter: grayscale(100%);
+        }
+
+        .profile-pic:hover {
+            transform: scale(1.1);
+            filter: grayscale(0%);
+        }
+
+        #sidebar {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .description {
+            transition: all 0.3s ease-in-out;
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        .card:hover .description {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card {
+            transition: transform 0.6s cubic-bezier(.28, -0.03, 0, .99);
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        body {
+            perspective: 1000px;
+        }
+
+        .card {
+            transform-style: preserve-3d;
+            transition: transform 1s ease-in-out;
+        }
+
+        .card:hover {
+            transform: rotateY(180deg);
+        }
+
+        .card-img {
+            transform: translateZ(40px);
+            position: relative;
+        }
+
+        .dark-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .content-front {
+            z-index: 2;
+        }
+
+        .card-body {
+            transform: rotateY(180deg);
+            backface-visibility: hidden;
+        }
+
+        .content-back,
+        .content-front {
+            backface-visibility: hidden;
+        }
+
+        .content-back {
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .card:hover .content-back {
+            opacity: 1;
+            transition-delay: 0.3s;
+        }
+
+        .card:hover .content-front {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .card-body,
+        .card-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .bg {
+            position: absolute;
+            background: #fff;
+            border-radius: 100px;
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        .bg:nth-child(1) {
+            height: 25%;
+            transform-origin: left;
+            top: 0;
+            left: -10%;
+            transform: rotate(-10deg);
+        }
+
+        .bg:nth-child(2) {
+            height: 50%;
+            transform-origin: right;
+            top: 5%;
+            right: -10%;
+            transform: rotate(-10deg);
+        }
+
+        .bg:nth-child(3) {
+            height: 50%;
+            transform-origin: left;
+            top: 70%;
+            left: -10%;
+            transform: rotate(-10deg);
+        }
+
+        .card:hover .bg {
+            width: 100%;
+            transition-delay: 1s;
+        }
+
+        .card:hover .bg:nth-child(2) {
+            transition-delay: 1.5s;
+        }
+
+        .card:hover .bg:nth-child(3) {
+            transition-delay: 2s;
+        }
+
+        .card-body {
+            transform: translateZ(-40px) scale(0.9);
+            background: transparent;
+            border: 4px solid #fff;
+        }
+    </style>
+</head>
+
+
+<body class="bg-gray-700 text-white flex h-screen overflow-hidden">
+    <div id="background" class="fixed inset-0 z-0 bg-cover bg-center filter blur-sm"></div>
+    <aside
+        class="w-64 bg-gray-800 bg-opacity-20 backdrop-blur-lg text-white h-full p-4 fixed md:relative transition-transform transform md:translate-x-0 -translate-x-full z-40 mt-16 md:mt-0 shadow-xl"
+        id="sidebar">
+        <div class="text-center mb-10">
+            <h1 class="text-2xl font-bold">Menu</h1>
+        </div>
+        <nav>
+            <ul>
+                <li class="mb-4">
+                    <a href="index.html" id="dashboardLink"
+                        class="block py-2 px-4 border border-transparent rounded transition-all duration-300 text-sm md:text-base">
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="Table.html" id="tablesLink"
+                        class="block py-2 px-4 border border-transparent rounded transition-all duration-300 text-sm md:text-base">
+                        Tables
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+
+
+
+    <!-- Header -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header id="appHeader"
+            class="p-4 flex items-center z-50 shadow-md fixed w-full top-0 left-0 right-0 bg-gray-700 bg-opacity-10 backdrop-blur-lg">
+            <div class="flex items-center">
+                <button id="menuButton" class="mr-4 md:hidden" onclick="toggleSidebar()">
+                    <span class="text-2xl">&#9776;</span>
+                </button>
+                <img src="media/logo.gif" alt="App Logo" class="w-20 h-20 mr-2 mt-3">
+                <h1 class="text-xl font-bold pr-7">Weathering App</h1>
+            </div>
+            <div class="flex-grow mx-4 mt-6 md:mt-0">
+                <input type="text" id="cityInput" placeholder="Search City"
+                    class="w-full px-4 py-2 rounded-lg border border-white bg-transparent text-white placeholder-white focus:bg-white focus:text-gray-700 transition-all duration-300"
+                    onclick="this.classList.add('bg-white');" onblur="this.classList.remove('bg-white');">
+            </div>
+            <button id="searchButton"
+                class="search-button px-4 py-2 border border-white rounded mr-4 bg-transparent text-white hover:bg-opacity-30 transition-all duration-300"
+                onclick="fetchWeatherData()">
+                Search
+            </button>
+
+            <div class="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center bg-cover bg-center profile-pic"
+                style="background-image: url('media/me.jpg');"></div>
+        </header>
+
+
+
+
+
+
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-700 p-4 pt-16">
+
+            <section id="gifSection"
+                class="relative mb-8 mt-12 shadow-xl rounded-lg overflow-hidden transition-transform duration-300 hover:scale-105 h-80">
+                <!-- Increased height -->
+                <!-- Background GIF for the section -->
+                <div class="absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-300"
+                    style="background-image: url('media/rainy.gif'); opacity: 0.8;"></div>
+
+                <!-- Overlay to darken the GIF on hover -->
+                <div class="absolute inset-0 bg-black opacity-0 hover:opacity-60 transition-opacity duration-300 z-10">
+                </div>
+
+                <!-- Text that overlays the GIF -->
+                <div id="gifText"
+                    class="relative z-20 flex flex-col items-center justify-center h-full bg-black bg-opacity-50 text-white p-4">
+                    <h1 id="mainText" class="text-5xl font-bold opacity-100 transition-opacity duration-300">Weathering
+                        With You</h1> <!-- Full opacity -->
+                    <h2 id="hoverText" class="text-3xl opacity-100 transition-opacity duration-300 mt-2">The rain may
+                        fall, but it won’t wash away the sun forever.</h2> <!-- Below the main text -->
+                </div>
+            </section>
+
+
+
+            <!-- Weather Data Section -->
+            <div id="weatherData"
+                class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-6 rounded-lg shadow-lg mb-6 transition-transform duration-300 hover:scale-105 border border-gray-600 border-r-4 border-black">
+
+                <div id="currentWeather" class="text-sm"></div>
+                <div id="forecast" class="text-sm grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            </div>
+
+
+
+            <!-- Chart Cards Section -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div id="barChartCard"
+                    class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-4 rounded-lg shadow-lg opacity-80 transition-transform duration-300 transform hover:scale-105 hover:opacity-100 cursor-pointer"
+                    onclick="openModal('barChartModal')">
+                    <h3 class="font-semibold text-white">Vertical Bar Chart</h3>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div id="doughnutChartCard"
+                    class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-4 rounded-lg shadow-lg opacity-80 transition-transform duration-300 transform hover:scale-105 hover:opacity-100 cursor-pointer"
+                    onclick="openModal('doughnutChartModal')">
+                    <h3 class="font-semibold text-white">Doughnut Chart</h3>
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+                <div id="lineChartCard"
+                    class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-4 rounded-lg shadow-lg opacity-80 transition-transform duration-300 transform hover:scale-105 hover:opacity-100 cursor-pointer"
+                    onclick="openModal('lineChartModal')">
+                    <h3 class="font-semibold text-white">Line Chart</h3>
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+
+
+
+            <!-- Modals for Charts -->
+            <div id="barChartModal"
+                class="fixed inset-0 hidden justify-center items-center bg-black bg-opacity-50 backdrop-blur-md z-50">
+                <div id="barChartModalContent"
+                    class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-8 rounded-lg shadow-lg max-w-lg w-full text-white">
+                    <h2 class="text-2xl font-bold mb-4">Bar Chart</h2>
+                    <canvas id="barChartFull"></canvas>
+                    <button class="bg-red-500 text-white px-4 py-2 rounded mt-4"
+                        onclick="closeModal('barChartModal')">Close</button>
+                </div>
+            </div>
+
+            <div id="doughnutChartModal"
+                class="fixed inset-0 hidden justify-center items-center bg-black bg-opacity-50 backdrop-blur-md z-50">
+                <div id="doughnutChartModalContent"
+                    class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-8 rounded-lg shadow-lg max-w-lg w-full text-white">
+                    <h2 class="text-2xl font-bold mb-4">Doughnut Chart</h2>
+                    <canvas id="doughnutChartFull"></canvas>
+                    <button class="bg-red-500 text-white px-4 py-2 rounded mt-4"
+                        onclick="closeModal('doughnutChartModal')">Close</button>
+                </div>
+            </div>
+
+            <div id="lineChartModal"
+                class="fixed inset-0 hidden justify-center items-center bg-black bg-opacity-50 backdrop-blur-md z-50">
+                <div id="lineChartModalContent"
+                    class="bg-gray-800 bg-opacity-10 backdrop-blur-md p-8 rounded-lg shadow-lg max-w-lg w-full text-white">
+                    <h2 class="text-2xl font-bold mb-4">Line Chart</h2>
+                    <canvas id="lineChartFull"></canvas>
+                    <button class="bg-red-500 text-white px-4 py-2 rounded mt-4"
+                        onclick="closeModal('lineChartModal')">Close</button>
+                </div>
+            </div>
+
+
+
+
+
+
+            <!-- Script to open and close modals & sidebar functionality -->
+            <script>
+                const apiKey = '4864395c986b99fc97e6db8616df6a6a';
+                let forecastData;
+
+                function fetchWeatherData() {
+                    const city = document.getElementById('cityInput').value;
+                    const currentWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+                    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+
+                    // Fetch current weather data
+                    fetch(currentWeatherUrl)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('City not found');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            displayCurrentWeather(data);
+                            return fetch(forecastUrl);
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Forecast not found');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            forecastData = data;
+                            displayForecast(data);
+                            updateCharts(data);
+                        })
+                        .catch(error => {
+                            document.getElementById('currentWeather').innerText = error.message;
+                            document.getElementById('forecast').innerHTML = '';
+                        });
+                }
+
+
+
+
+                function displayForecast(data) {
+                    const forecastContainer = document.getElementById('forecast');
+                    const forecastsByDate = {};
+
+                    data.list.forEach(item => {
+                        const date = new Date(item.dt * 1000).toLocaleDateString();
+                        if (!forecastsByDate[date]) {
+                            forecastsByDate[date] = [];
+                        }
+                        forecastsByDate[date].push(item);
+                    });
+
+                    forecastContainer.innerHTML = '';
+
+                    const dates = Object.keys(forecastsByDate);
+                    for (let i = 0; i < 5; i++) {
+                        const date = dates[i];
+                        const tempData = forecastsByDate[date];
+
+
+                        const avgTemp = tempData.reduce((acc, item) => acc + item.main.temp, 0) / tempData.length;
+
+
+                        const weather = tempData[0].weather[0];
+                        const forecastHtml = `
+            <div class="bg-gray-800 bg-opacity-20 backdrop-blur-md p-6 rounded-lg shadow-lg text-white transform transition-transform duration-300 hover:scale-105 hover:shadow-2xl">
+                <p class="font-semibold text-lg">${date}</p>
+                <p class="text-sm text-gray-300 mb-2"><strong>Temperature:</strong> ${avgTemp.toFixed(1)} °C</p>
+                <p class="text-sm text-gray-300 mb-2"><strong>Weather:</strong> ${weather.description}</p>
+                <img src="https://openweathermap.org/img/wn/${weather.icon}@2x.png" alt="${weather.description}" class="w-16 h-16 mx-auto">
+            </div>
+        `;
+                        forecastContainer.innerHTML += forecastHtml;
+                    }
+                }
+
+                let barChart, doughnutChart, lineChart; // Declare variables to store chart instances
+
+                function updateCharts(data) {
+                    const forecastsByDate = {};
+                    const dates = [];
+                    const temperatures = [];
+                    const weatherConditions = {};
+
+                    // Collect forecast data
+                    data.list.forEach(item => {
+                        const date = new Date(item.dt * 1000).toLocaleDateString();
+                        if (!forecastsByDate[date]) {
+                            forecastsByDate[date] = [];
+                            dates.push(date);
+                            weatherConditions[date] = {};
+                        }
+                        forecastsByDate[date].push(item);
+                        weatherConditions[date][item.weather[0].main] = (weatherConditions[date][item.weather[0].main] || 0) + 1;
+                    });
+
+                    // Prepare data for charts
+                    for (const date in forecastsByDate) {
+                        const tempData = forecastsByDate[date];
+                        const avgTemp = tempData.reduce((acc, item) => acc + item.main.temp, 0) / tempData.length;
+                        temperatures.push(avgTemp);
+                    }
+
+                    // Destroy existing charts if they exist
+                    if (barChart) barChart.destroy();
+                    if (doughnutChart) doughnutChart.destroy();
+                    if (lineChart) lineChart.destroy();
+
+                    // Create new bar chart
+                    const barCtx = document.getElementById('barChart');
+                    barChart = new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: dates.slice(0, 5),
+                            datasets: [{
+                                label: 'Temperature (°C)',
+                                data: temperatures.slice(0, 5),
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            animations: {
+                                y: {
+                                    delay: (context) => (context.index * 100)
+                                }
+                            }
+                        }
+                    });
+
+                    // Create new doughnut chart
+                    const doughnutCtx = document.getElementById('doughnutChart');
+                    const weatherCounts = Object.values(weatherConditions).flat();
+                    const weatherLabels = [...new Set(weatherCounts.map(condition => condition.main))];
+                    const weatherData = weatherLabels.map(label => weatherCounts.filter(condition => condition.main === label).length);
+
+                    doughnutChart = new Chart(doughnutCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: weatherLabels,
+                            datasets: [{
+                                label: 'Weather Conditions',
+                                data: weatherData,
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.6)',
+                                    'rgba(255, 205, 86, 0.6)',
+                                    'rgba(75, 192, 192, 0.6)',
+                                    'rgba(153, 102, 255, 0.6)',
+                                    'rgba(255, 159, 64, 0.6)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(255, 205, 86, 1)',
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(153, 102, 255, 1)',
+                                    'rgba(255, 159, 64, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            animations: {
+                                out: {
+                                    rotate: { from: 0, to: 360, duration: 1500, easing: 'easeInOutQuad' },
+                                    opacity: { from: 0, to: 1, duration: 500, easing: 'easeInOutQuad' }
+                                },
+                                in: {
+                                    rotate: { from: 360, to: 0, duration: 1500, easing: 'easeInOutQuad' },
+                                    opacity: { from: 1, to: 0, duration: 500, easing: 'easeInOutQuad' }
+                                }
+                            }
+                        }
+                    });
+
+                    // Create new line chart
+                    const lineCtx = document.getElementById('lineChart');
+                    lineChart = new Chart(lineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: dates.slice(0, 5),
+                            datasets: [{
+                                label: 'Temperature (°C)',
+                                data: temperatures.slice(0, 5),
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            animations: {
+                                tension: {
+                                    duration: 1000,
+                                    easing: 'easeInOutQuad',
+                                    from: 1,
+                                    to: 0,
+                                    loop: true
+                                }
+                            }
+                        }
+                    });
+                }
+
+                function toggleSidebar() {
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.classList.toggle('-translate-x-full'); // Toggle the sidebar visibility
+                }
+
+                // Close sidebar when clicking outside
+                document.addEventListener('click', (event) => {
+                    const sidebar = document.getElementById('sidebar');
+                    const menuButton = document.getElementById('menuButton');
+
+
+                    if (!sidebar.contains(event.target) && !menuButton.contains(event.target) && !sidebar.classList.contains('-translate-x-full')) {
+                        sidebar.classList.add('-translate-x-full'); // Close the sidebar
+                    }
+                });
+
+                function openModal(modalId) {
+                    const modal = document.getElementById(modalId);
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex', 'justify-center', 'items-center'); // Center the modal
+
+                    // Render full chart in modal based on the chart type
+                    if (modalId === 'barChartModal') {
+                        renderFullBarChart();
+                    } else if (modalId === 'doughnutChartModal') {
+                        renderFullDoughnutChart();
+                    } else if (modalId === 'lineChartModal') {
+                        renderFullLineChart();
+                    }
+                }
+
+
+                function closeModal(modalId) {
+                    const modal = document.getElementById(modalId);
+                    modal.classList.add('hidden');
+                }
+
+                function renderFullBarChart() {
+                    const barCtx = document.getElementById('barChartFull');
+                    new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: [...forecastData.list.map(item => new Date(item.dt * 1000).toLocaleDateString())],
+                            datasets: [{
+                                label: 'Temperature (°C)',
+                                data: [...forecastData.list.map(item => item.main.temp)],
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            animations: {
+                                y: { delay: (context) => context.index * 100 }
+                            }
+                        }
+                    });
+                }
+
+                function renderFullDoughnutChart() {
+                    const doughnutCtx = document.getElementById('doughnutChartFull');
+                    const weatherCounts = {};
+                    forecastData.list.forEach(item => {
+                        const weather = item.weather[0].main;
+                        weatherCounts[weather] = (weatherCounts[weather] || 0) + 1;
+                    });
+
+                    new Chart(doughnutCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(weatherCounts),
+                            datasets: [{
+                                label: 'Weather Conditions',
+                                data: Object.values(weatherCounts),
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.6)',
+                                    'rgba(255, 205, 86, 0.6)',
+                                    'rgba(75, 192, 192, 0.6)',
+                                    'rgba(153, 102, 255, 0.6)',
+                                    'rgba(255, 159, 64, 0.6)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(255, 205, 86, 1)',
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(153, 102, 255, 1)',
+                                    'rgba(255, 159, 64, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            animations: {
+                                rotate: { from: 0, to: 360, duration: 1500, easing: 'easeInOutQuad' }
+                            }
+                        }
+                    });
+                }
+
+                function renderFullLineChart() {
+                    const lineCtx = document.getElementById('lineChartFull');
+                    new Chart(lineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: forecastData.list.map(item => new Date(item.dt * 1000).toLocaleDateString()),
+                            datasets: [{
+                                label: 'Temperature (°C)',
+                                data: forecastData.list.map(item => item.main.temp),
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            animations: {
+                                tension: {
+                                    duration: 1000,
+                                    easing: 'easeInOutQuad',
+                                    from: 1,
+                                    to: 0,
+                                    loop: true
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Function to convert Celsius to Fahrenheit
+                function convertToFahrenheit(celsius) {
+                    return (celsius * 9 / 5) + 32;
+                }
+
+                // Function to convert Fahrenheit to Celsius
+                function convertToCelsius(fahrenheit) {
+                    return (fahrenheit - 32) * 5 / 9;
+                }
+
+                function getWeather() {
+                    const apiKey = '4864395c986b99fc97e6db8616df6a6a';
+                    const city = 'Islamabad';
+                    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => displayCurrentWeather(data))
+                        .catch(error => console.error('Error fetching weather data:', error));
+                }
+
+
+
+               function displayCurrentWeather(data) {
+    const { name, main, wind, weather } = data;
+    const weatherCondition = weather[0].main.toLowerCase();
+    const weatherBackground = getWeatherBackground(weatherCondition);
+
+    // Change the background GIF with a fade effect
+    changeBackgroundGif(`media/${weatherBackground}.gif`);
+
+    let gifSrc = '';
+    let cardColor = 'bg-gray-800';
+    let headerColor = 'bg-opacity-10';
+    let borderColor = 'border-white';
+    let buttonHoverColor = 'hover:bg-blue-500';
+    let sidebarHoverColor = 'hover:bg-gray-600 hover:bg-opacity-50';
+    let sidebarColor = 'bg-gray-800';
+
+                    // Assign different styles based on weather conditions
+                    if (weatherCondition.includes('rain')) {
+                        gifSrc = 'media/rain.gif';
+                        cardColor = 'bg-[#3A6D8C]';
+                        headerColor = 'bg-[#3A6D8C] bg-opacity-10';
+                        borderColor = 'border-[#3A6D8C]';
+                        buttonHoverColor = 'hover:bg-[#3A6D8C]';
+                        sidebarHoverColor = 'hover:bg-[#3A6D8C] hover:bg-opacity-50';
+                        sidebarColor = 'bg-[#3A6D8C] bg-opacity-20';
+                    } else if (weatherCondition.includes('cloud') || weatherCondition.includes('overcast')) {
+                        gifSrc = 'media/cloud.gif';
+                        cardColor = 'bg-[#789DBC]';
+                        headerColor = 'bg-[#789DBC] bg-opacity-10';
+                        borderColor = 'border-[#789DBC]';
+                        buttonHoverColor = 'hover:bg-[#789DBC]';
+                        sidebarHoverColor = 'hover:bg-[#789DBC] hover:bg-opacity-50';
+                        sidebarColor = 'bg-[#789DBC] bg-opacity-20';
+                    } 
+                    else if (weatherCondition.includes('haze') || weatherCondition.includes('overcast')) {
+                        gifSrc = 'media/cloud.gif';
+                        cardColor = 'bg-[#789DBC]';
+                        headerColor = 'bg-[#789DBC] bg-opacity-10';
+                        borderColor = 'border-[#789DBC]';
+                        buttonHoverColor = 'hover:bg-[#789DBC]';
+                        sidebarHoverColor = 'hover:bg-[#789DBC] hover:bg-opacity-50';
+                        sidebarColor = 'bg-[#789DBC] bg-opacity-20';
+                    }else if (weatherCondition.includes('snow')) {
+                        gifSrc = 'media/snow.gif';
+                        cardColor = 'bg-[#7CF5FF]';
+                        headerColor = 'bg-[#7CF5FF] bg-opacity-10';
+                        borderColor = 'border-[#7CF5FF]';
+                        buttonHoverColor = 'hover:bg-[#7CF5FF]';
+                        sidebarHoverColor = 'hover:bg-[#7CF5FF] hover:bg-opacity-50';
+                        sidebarColor = 'bg-[#7CF5FF] bg-opacity-20';
+                    } else if (weatherCondition.includes('clear')) {
+                        gifSrc = 'media/sun.gif';
+                        cardColor = 'bg-[#FF9843]';
+                        headerColor = 'bg-[#FF9843] bg-opacity-10';
+                        borderColor = 'border-[#FF9843]';
+                        buttonHoverColor = 'hover:bg-[#FF9843]';
+                        sidebarHoverColor = 'hover:bg-[#FF9843] hover:bg-opacity-50';
+                        sidebarColor = 'bg-[#FF9843] bg-opacity-20';
+                    } else {
+                        gifSrc = 'media/cloud.gif'; // Default if no specific match
+                    }
+
+                    // Update the header background color
+                    const appHeader = document.getElementById('appHeader');
+                    appHeader.className = `p-4 flex items-center z-50 shadow-md fixed w-full top-0 left-0 right-0 ${headerColor} backdrop-blur-lg transition-all duration-300`;
+
+                    // Set the background color of the weatherData card
+                    const weatherDataCard = document.getElementById('weatherData');
+                    weatherDataCard.className = `p-6 rounded-lg shadow-lg mb-6 transition-transform duration-300 hover:scale-105 ${cardColor} bg-opacity-10 backdrop-blur-md`;
+
+                    // Update chart cards colors
+                    document.getElementById('barChartCard').className = `p-4 rounded-lg shadow-lg mb-6 transition-transform duration-300 transform hover:scale-105 opacity-80 ${cardColor} bg-opacity-10 backdrop-blur-md`;
+                    document.getElementById('doughnutChartCard').className = `p-4 rounded-lg shadow-lg mb-6 transition-transform duration-300 transform hover:scale-105 opacity-80 ${cardColor} bg-opacity-10 backdrop-blur-md`;
+                    document.getElementById('lineChartCard').className = `p-4 rounded-lg shadow-lg mb-6 transition-transform duration-300 transform hover:scale-105 opacity-80 ${cardColor} bg-opacity-10 backdrop-blur-md`;
+
+                    // Update modal backgrounds
+                    document.getElementById('barChartModalContent').className = `bg-opacity-10 ${cardColor} backdrop-blur-md p-8 rounded-lg shadow-lg max-w-lg w-full text-white`;
+                    document.getElementById('doughnutChartModalContent').className = `bg-opacity-10 ${cardColor} backdrop-blur-md p-8 rounded-lg shadow-lg max-w-lg w-full text-white`;
+                    document.getElementById('lineChartModalContent').className = `bg-opacity-10 ${cardColor} backdrop-blur-md p-8 rounded-lg shadow-lg max-w-lg w-full text-white`;
+
+                    // Update the search bar border color
+                    const cityInput = document.getElementById('cityInput');
+                    cityInput.className = `w-full px-4 py-2 rounded-lg border ${borderColor} bg-transparent text-white placeholder-white focus:bg-white focus:text-gray-700 transition-all duration-300`;
+
+                    // Update the search button styles
+                    const searchButton = document.getElementById('searchButton');
+                    searchButton.className = `search-button px-4 py-2 border ${borderColor} rounded mr-4 border-opacity-100 ${buttonHoverColor} text-white transition-all duration-300`;
+
+                    // Update sidebar background color
+                    const sidebar = document.getElementById('sidebar');
+                    sidebar.className = `w-64 ${sidebarColor} backdrop-blur-lg text-white h-full p-4 fixed md:relative transition-transform transform md:translate-x-0 -translate-x-full z-40 mt-16 md:mt-0 shadow-xl`;
+
+                    // Update sidebar link styles
+                    const dashboardLink = document.getElementById('dashboardLink');
+                    dashboardLink.className = `block py-2 px-4 border ${borderColor} border-opacity-100 rounded transition-all duration-300 ${sidebarHoverColor}`;
+
+                    const tablesLink = document.getElementById('tablesLink');
+                    tablesLink.className = `block py-2 px-4 border ${borderColor} border-opacity-100 rounded transition-all duration-300 ${sidebarHoverColor}`;
+                    const temperatureCelsius = main.temp; // temperature in Celsius
+    const temperatureFahrenheit = convertToFahrenheit(temperatureCelsius); // convert to Fahrenheit
+
+    let isCelsius = true; 
+                    // Display weather info with the GIF on the left and temperature on the right
+                  const weatherInfo = `
+        <div class="flex flex-row items-center justify-center w-full text-center space-x-4">
+            <img src="${gifSrc}" alt="${weather[0].description}" class="w-32 h-32 object-contain rounded-lg shadow-lg">
+            <div class="flex flex-col items-center">
+                <p class="text-4xl font-semibold text-white mb-2">${name}</p>
+                <p id="temperature" class="text-8xl font-bold text-white mb-4 cursor-pointer">${temperatureCelsius} °C</p>
+                <div class="text-center">
+                    <p><strong>Humidity:</strong> ${main.humidity}%</p>
+                    <p><strong>Wind Speed:</strong> ${wind.speed} m/s</p>
+                    <p><strong>Weather:</strong> ${weather[0].description}</p>
+                    <img src="https://openweathermap.org/img/wn/${weather[0].icon}.png" alt="${weather[0].description}" class="w-16 h-16 mx-auto">
+                </div>
+            </div>
+        </div>
+    `;
+
+                   // Update the current weather section
+    document.getElementById('currentWeather').innerHTML = weatherInfo;
+
+// Add click event listener to the temperature element
+const temperatureElement = document.getElementById('temperature');
+temperatureElement.addEventListener('click', function() {
+    if (isCelsius) {
+        // Convert to Fahrenheit
+        temperatureElement.textContent = `${temperatureFahrenheit.toFixed(2)} °F`;
+        isCelsius = false;
+    } else {
+        // Convert back to Celsius
+        temperatureElement.textContent = `${temperatureCelsius.toFixed(2)} °C`;
+        isCelsius = true;
+    }
+});
+}
+
+
+
+
+                function getWeatherBackground(condition) {
+                    switch (condition) {
+                        case 'clear':
+                        case 'sunny':
+                            return 'sunny';
+                        case 'snow':
+                            return 'snow';
+                        case 'rain':
+                        
+                        case 'drizzle':
+                            return 'rainy';
+                            case 'haze':
+                        case 'clouds':
+                            return 'Cloudy';
+                        default:
+                            return 'sunny';
+                    }
+                }
+
+                // Function to change background GIF with fade-in effect
+                function changeBackgroundGif(newGifUrl) {
+                    const background = document.getElementById('background');
+
+
+                    background.style.transition = 'opacity 0.5s ease-in-out';
+
+
+                    background.style.opacity = 0;
+
+
+                    setTimeout(() => {
+                        background.style.backgroundImage = `url('${newGifUrl}')`;
+
+
+                        setTimeout(() => {
+                            background.style.opacity = 1; // Fade back in
+                        }, 50);
+                    }, 500);
+                }
+
+
+                // Call the getWeather function on page load
+                window.onload = getWeather;    
+            </script>
+</body>
+
+</html>
